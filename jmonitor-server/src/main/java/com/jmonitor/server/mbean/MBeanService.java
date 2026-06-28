@@ -6,6 +6,8 @@ import com.jmonitor.common.dto.MBeanOperation;
 import com.jmonitor.server.process.JvmConnectionManager;
 import org.springframework.stereotype.Service;
 
+import javax.management.Attribute;
+import javax.management.AttributeList;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
 import javax.management.MBeanOperationInfo;
@@ -18,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
@@ -56,17 +59,33 @@ public class MBeanService {
             throw new IOException("Cannot read MBeanInfo for " + objectName + ": " + e.getMessage(), e);
         }
 
+        // Batch-read all readable attributes in a single JMX round trip; the
+        // server silently omits any that fail, which we render as unavailable.
+        String[] readable = Arrays.stream(info.getAttributes())
+                .filter(MBeanAttributeInfo::isReadable)
+                .map(MBeanAttributeInfo::getName)
+                .toArray(String[]::new);
+        Map<String, Object> values = new HashMap<>();
+        if (readable.length > 0) {
+            try {
+                AttributeList list = conn.getAttributes(name, readable);
+                for (Attribute attr : list.asList()) {
+                    values.put(attr.getName(), attr.getValue());
+                }
+            } catch (Exception e) {
+                throw new IOException("Cannot read attributes of " + objectName + ": " + e.getMessage(), e);
+            }
+        }
+
         List<MBeanAttribute> attributes = new ArrayList<>();
         for (MBeanAttributeInfo a : info.getAttributes()) {
             String value;
-            if (a.isReadable()) {
-                try {
-                    value = render(conn.getAttribute(name, a.getName()));
-                } catch (Exception e) {
-                    value = "<error: " + e.getMessage() + ">";
-                }
-            } else {
+            if (!a.isReadable()) {
                 value = "<not readable>";
+            } else if (values.containsKey(a.getName())) {
+                value = render(values.get(a.getName()));
+            } else {
+                value = "<unavailable>";
             }
             attributes.add(new MBeanAttribute(a.getName(), a.getType(),
                     a.isReadable(), a.isWritable(),
@@ -88,20 +107,38 @@ public class MBeanService {
                 attributes, operations);
     }
 
-    /** Sets a writable attribute, coercing the string value to the declared type. */
+    /**
+     * Sets a writable attribute, coercing the string value to the declared type.
+     *
+     * @throws IllegalArgumentException if the attribute is unknown/not writable
+     *                                  or the value can't be coerced (→ 400)
+     * @throws IOException              if the target can't be reached or the set
+     *                                  is rejected by the MBean (→ 502)
+     */
     public void setAttribute(long pid, String objectName, String attribute, String value)
             throws IOException {
         MBeanServerConnection conn = connections.getConnection(pid);
         ObjectName name = toObjectName(objectName);
+
+        MBeanInfo info;
         try {
-            MBeanInfo info = conn.getMBeanInfo(name);
-            String type = Arrays.stream(info.getAttributes())
-                    .filter(a -> a.getName().equals(attribute) && a.isWritable())
-                    .map(MBeanAttributeInfo::getType)
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException(
-                            "No writable attribute '" + attribute + "'"));
-            conn.setAttribute(name, new javax.management.Attribute(attribute, coerce(value, type)));
+            info = conn.getMBeanInfo(name);
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException("Cannot read MBeanInfo for " + objectName + ": " + e.getMessage(), e);
+        }
+
+        // Validation / coercion errors are client errors and propagate as-is.
+        String type = Arrays.stream(info.getAttributes())
+                .filter(a -> a.getName().equals(attribute) && a.isWritable())
+                .map(MBeanAttributeInfo::getType)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("No writable attribute '" + attribute + "'"));
+        Object coerced = coerce(value, type);
+
+        try {
+            conn.setAttribute(name, new Attribute(attribute, coerced));
         } catch (IOException e) {
             throw e;
         } catch (Exception e) {

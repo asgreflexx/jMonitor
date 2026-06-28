@@ -1,31 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
-import { api, type ThreadDump, type ThreadInfoDto } from '../api/client'
+import { useState } from 'react'
+import { api, type ThreadInfoDto } from '../api/client'
+import { useAsync } from '../hooks/useAsync'
 import { formatTimestamp } from '../util/format'
 
 /** Thread dump viewer with deadlock highlighting and a state filter (Phase 4). */
 export function ThreadsTab({ pid }: { pid: number }) {
-  const [dump, setDump] = useState<ThreadDump | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const { data: dump, error, loading, reload } = useAsync(pid, () => api.threadDump(pid))
   const [filter, setFilter] = useState<string>('ALL')
-
-  const capture = useCallback(() => {
-    setLoading(true)
-    api
-      .threadDump(pid)
-      .then((d) => {
-        setDump(d)
-        setError(null)
-      })
-      .catch((e: unknown) => setError(String(e)))
-      .finally(() => setLoading(false))
-  }, [pid])
-
-  useEffect(() => {
-    setDump(null)
-    setError(null)
-    capture()
-  }, [pid, capture])
 
   if (error) {
     return <div className="detail__status detail__status--error">{error}</div>
@@ -40,14 +21,10 @@ export function ThreadsTab({ pid }: { pid: number }) {
   return (
     <>
       <div className="toolbar">
-        <button type="button" className="btn" onClick={capture} disabled={loading}>
+        <button type="button" className="btn" onClick={reload} disabled={loading}>
           {loading ? 'Capturing…' : 'Recapture'}
         </button>
-        <select
-          className="select"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        >
+        <select className="select" value={filter} onChange={(e) => setFilter(e.target.value)}>
           {states.map((s) => (
             <option key={s} value={s}>
               {s}

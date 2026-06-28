@@ -1,27 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
-import { api, type MBeanDetails } from '../api/client'
+import { useMemo, useState } from 'react'
+import { api } from '../api/client'
+import { useAsync } from '../hooks/useAsync'
 
 /** MBean browser: searchable object-name list + attribute/operation inspector (Phase 4). */
 export function MBeansTab({ pid }: { pid: number }) {
-  const [names, setNames] = useState<string[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const { data: names, error } = useAsync(pid, () => api.mbeans(pid))
   const [query, setQuery] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
 
-  useEffect(() => {
-    setNames([])
-    setSelected(null)
-    api
-      .mbeans(pid)
-      .then((n) => {
-        setNames(n)
-        setError(null)
-      })
-      .catch((e: unknown) => setError(String(e)))
-  }, [pid])
-
   const filtered = useMemo(
-    () => names.filter((n) => n.toLowerCase().includes(query.toLowerCase())),
+    () => (names ?? []).filter((n) => n.toLowerCase().includes(query.toLowerCase())),
     [names, query],
   )
 
@@ -34,7 +22,7 @@ export function MBeansTab({ pid }: { pid: number }) {
       <div className="mbean-list">
         <input
           className="input"
-          placeholder={`Filter ${names.length} MBeans…`}
+          placeholder={`Filter ${names?.length ?? 0} MBeans…`}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -65,26 +53,11 @@ export function MBeansTab({ pid }: { pid: number }) {
 }
 
 function MBeanInspector({ pid, name }: { pid: number; name: string }) {
-  const [details, setDetails] = useState<MBeanDetails | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const { data: details, error, reload } = useAsync(
+    `${pid}|${name}`,
+    () => api.mbeanDetails(pid, name),
+  )
   const [busy, setBusy] = useState(false)
-
-  const load = () => {
-    api
-      .mbeanDetails(pid, name)
-      .then((d) => {
-        setDetails(d)
-        setError(null)
-      })
-      .catch((e: unknown) => setError(String(e)))
-  }
-
-  useEffect(() => {
-    setDetails(null)
-    setError(null)
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pid, name])
 
   const onEdit = (attr: string, current: string) => {
     const next = window.prompt(`Set ${attr}`, current)
@@ -92,7 +65,7 @@ function MBeanInspector({ pid, name }: { pid: number; name: string }) {
     setBusy(true)
     api
       .setMBeanAttribute(pid, name, attr, next)
-      .then(load)
+      .then(reload)
       .catch((e: unknown) => alert(`Failed: ${e}`))
       .finally(() => setBusy(false))
   }

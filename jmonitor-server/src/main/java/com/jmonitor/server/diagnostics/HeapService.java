@@ -70,18 +70,29 @@ public class HeapService {
 
         Files.createDirectories(dumpDir);
         long now = System.currentTimeMillis();
+
+        // dumpHeap requires the file not to exist yet; ensure a unique name even
+        // for rapid successive dumps of the same pid or a stale leftover file.
         String fileName = pid + "-" + now + ".hprof";
         Path target = dumpDir.resolve(fileName);
+        for (int n = 1; Files.exists(target); n++) {
+            fileName = pid + "-" + now + "-" + n + ".hprof";
+            target = dumpDir.resolve(fileName);
+        }
 
         try {
-            // dumpHeap requires the file not to exist yet.
             diagnostic.dumpHeap(target.toAbsolutePath().toString(), live);
         } catch (Exception e) {
             throw new IOException("Heap dump failed: " + e.getMessage(), e);
         }
 
-        long size = Files.exists(target) ? Files.size(target) : 0;
-        return registry.insert(pid, fileName, size, now, live);
+        if (!Files.exists(target)) {
+            // The target reported success but we can't see the file (e.g. a
+            // different filesystem view) — don't record a phantom 0-byte dump.
+            throw new IOException("Heap dump file was not created at " + target
+                    + " (target JVM may not share this filesystem)");
+        }
+        return registry.insert(pid, fileName, Files.size(target), now, live);
     }
 
     public Path resolveDumpFile(String fileName) {

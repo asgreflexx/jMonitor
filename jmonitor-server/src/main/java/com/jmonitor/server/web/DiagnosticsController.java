@@ -26,6 +26,9 @@ import java.util.List;
 
 /**
  * REST endpoints for thread dumps and heap diagnostics (Phase 4).
+ *
+ * <p>{@link IOException}s from the target connection propagate to
+ * {@link ApiExceptionHandler}, which maps them to 502.
  */
 @RestController
 public class DiagnosticsController {
@@ -42,19 +45,19 @@ public class DiagnosticsController {
     }
 
     @GetMapping("/api/processes/{pid}/threaddump")
-    public ThreadDump threadDump(@PathVariable long pid) {
-        return wrap(() -> threadDumps.capture(pid));
+    public ThreadDump threadDump(@PathVariable long pid) throws IOException {
+        return threadDumps.capture(pid);
     }
 
     @GetMapping("/api/processes/{pid}/heap/histogram")
-    public HeapHistogram histogram(@PathVariable long pid) {
-        return wrap(() -> heap.histogram(pid));
+    public HeapHistogram histogram(@PathVariable long pid) throws IOException {
+        return heap.histogram(pid);
     }
 
     @PostMapping("/api/processes/{pid}/heap/dump")
     public HeapDumpInfo dumpHeap(@PathVariable long pid,
-                                 @RequestParam(defaultValue = "true") boolean live) {
-        return wrap(() -> heap.dumpHeap(pid, live));
+                                 @RequestParam(defaultValue = "true") boolean live) throws IOException {
+        return heap.dumpHeap(pid, live);
     }
 
     @GetMapping("/api/processes/{pid}/heap/dumps")
@@ -75,19 +78,5 @@ public class DiagnosticsController {
                         "attachment; filename=\"" + info.fileName() + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(new FileSystemResource(file));
-    }
-
-    /** Maps target-connection IOExceptions to a 502 with the message. */
-    private static <T> T wrap(IoSupplier<T> supplier) {
-        try {
-            return supplier.get();
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, e.getMessage(), e);
-        }
-    }
-
-    @FunctionalInterface
-    private interface IoSupplier<T> {
-        T get() throws IOException;
     }
 }
