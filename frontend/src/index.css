@@ -89,6 +89,60 @@ body {
   line-height: 1.5;
 }
 
+.sidebar__empty--error {
+  color: var(--error);
+}
+
+/* ---- Process list ---- */
+.proc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.proc-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 8px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.proc-item:hover:not(:disabled) {
+  background: var(--bg-elev-2);
+}
+
+.proc-item--active {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.proc-item:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.proc-item__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.proc-item__pid {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
 .sidebar__footer {
   color: var(--text-dim);
   font-size: 11px;
@@ -136,6 +190,114 @@ body {
   color: var(--text-dim);
   line-height: 1.8;
   padding-left: 18px;
+}
+
+.content__header > div h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.detail__sub {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.detail__status {
+  padding: 32px 24px;
+  color: var(--text-dim);
+}
+
+.detail__status--error {
+  color: var(--error);
+}
+
+/* ---- Key/value grid ---- */
+.kv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.kv {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.kv__label {
+  color: var(--text-dim);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.kv__value {
+  word-break: break-word;
+}
+
+.kv__value--mono {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+}
+
+/* ---- Collapsible panels ---- */
+.panel {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+}
+
+.panel > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.panel__empty {
+  color: var(--text-dim);
+}
+
+.arg-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+
+.arg-list code,
+.prop-table code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 12px;
+}
+
+.prop-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.prop-table td {
+  border-top: 1px solid var(--border);
+  padding: 4px 8px;
+  vertical-align: top;
+}
+
+.prop-table__key {
+  color: var(--accent);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  white-space: nowrap;
+  width: 1%;
+}
+
+.prop-table__val {
+  color: var(--text);
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  word-break: break-all;
 }
 
 /* ---- Badge ---- */

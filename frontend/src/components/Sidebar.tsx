@@ -1,9 +1,45 @@
-// Left navigation rail.
-//
-// Phase 0: static shell only. From Phase 1 the process list (discovered via the
-// Attach API) is rendered here and selecting an entry drives the main content.
+import { useEffect, useState } from 'react'
+import { api, type ProcessInfo } from '../api/client'
+import { shortName } from '../util/format'
 
-export function Sidebar() {
+const REFRESH_MS = 3000
+
+interface SidebarProps {
+  selectedPid: number | null
+  onSelect: (pid: number) => void
+}
+
+/**
+ * Left navigation rail showing the live list of discovered JVMs.
+ * Polls /api/processes every few seconds and reflects process start/exit.
+ */
+export function Sidebar({ selectedPid, onSelect }: SidebarProps) {
+  const [processes, setProcesses] = useState<ProcessInfo[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const load = () =>
+      api
+        .processes()
+        .then((list) => {
+          if (cancelled) return
+          setProcesses(list)
+          setError(null)
+        })
+        .catch((err: unknown) => {
+          if (!cancelled) setError(String(err))
+        })
+
+    load()
+    const timer = setInterval(load, REFRESH_MS)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [])
+
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
@@ -12,13 +48,37 @@ export function Sidebar() {
       </div>
 
       <nav className="sidebar__nav">
-        <div className="sidebar__section">Processes</div>
-        <p className="sidebar__empty">
-          Process discovery arrives in Phase&nbsp;1.
-        </p>
+        <div className="sidebar__section">
+          Processes{processes ? ` (${processes.length})` : ''}
+        </div>
+
+        {error && <p className="sidebar__empty sidebar__empty--error">{error}</p>}
+        {!processes && !error && <p className="sidebar__empty">Loading…</p>}
+        {processes?.length === 0 && (
+          <p className="sidebar__empty">No JVMs discovered.</p>
+        )}
+
+        <ul className="proc-list">
+          {processes?.map((p) => (
+            <li key={p.pid}>
+              <button
+                type="button"
+                className={
+                  'proc-item' + (p.pid === selectedPid ? ' proc-item--active' : '')
+                }
+                disabled={!p.attachable}
+                title={p.attachable ? p.displayName : 'Cannot attach (jMonitor itself)'}
+                onClick={() => p.attachable && onSelect(p.pid)}
+              >
+                <span className="proc-item__name">{shortName(p.displayName)}</span>
+                <span className="proc-item__pid">{p.pid}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
       </nav>
 
-      <div className="sidebar__footer">v0.1.0 · scaffold</div>
+      <div className="sidebar__footer">v0.1.0 · Phase 1</div>
     </aside>
   )
 }

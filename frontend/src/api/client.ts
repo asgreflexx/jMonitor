@@ -8,6 +8,26 @@ export interface HealthResponse {
   version: string
 }
 
+export interface ProcessInfo {
+  pid: number
+  displayName: string
+  attachable: boolean
+}
+
+export interface JvmDetails {
+  pid: number
+  command: string
+  vmName: string
+  vmVendor: string
+  vmVersion: string
+  javaVersion: string
+  javaHome: string
+  startTimeMillis: number
+  uptimeMillis: number
+  inputArguments: string[]
+  systemProperties: Record<string, string>
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(path, { headers: { Accept: 'application/json' } })
   if (!res.ok) {
@@ -18,4 +38,6 @@ async function getJson<T>(path: string): Promise<T> {
 
 export const api = {
   health: () => getJson<HealthResponse>('/api/health'),
+  processes: () => getJson<ProcessInfo[]>('/api/processes'),
+  processDetails: (pid: number) => getJson<JvmDetails>(`/api/processes/${pid}`),
 }
