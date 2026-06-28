@@ -165,6 +165,14 @@ export interface JfrStatus {
   profile?: string
 }
 
+export interface Alert {
+  level: string
+  metric: string
+  message: string
+  value: number
+  threshold: number
+}
+
 export interface MethodHotspot {
   method: string
   calls: number
@@ -204,6 +212,8 @@ export const api = {
       `/api/processes/${pid}/metrics/history?from=${fromMillis}&to=${toMillis}` +
         (metrics && metrics.length ? `&metrics=${metrics.join(',')}` : ''),
     ),
+  alerts: (pid: number) => getJson<Alert[]>(`/api/processes/${pid}/alerts`),
+  metricsCsvUrl: (pid: number) => `/api/processes/${pid}/metrics/export.csv`,
 
   // ---- Phase 4: diagnostics ----
   threadDump: (pid: number) => getJson<ThreadDump>(`/api/processes/${pid}/threaddump`),
