@@ -3,6 +3,7 @@ package com.jmonitor.server.diagnostics;
 import com.jmonitor.common.dto.HeapDumpInfo;
 import com.jmonitor.common.dto.HeapHistogram;
 import com.jmonitor.server.process.JvmConnectionManager;
+import com.jmonitor.server.support.SafePaths;
 import com.sun.management.HotSpotDiagnosticMXBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -96,12 +97,7 @@ public class HeapService {
     }
 
     public Path resolveDumpFile(String fileName) {
-        // Guard against path traversal: only a bare file name is allowed.
-        Path p = dumpDir.resolve(fileName).normalize();
-        if (!p.startsWith(dumpDir)) {
-            throw new IllegalArgumentException("Invalid dump file name: " + fileName);
-        }
-        return p;
+        return SafePaths.resolveWithin(dumpDir, fileName);
     }
 
     private static HeapHistogram parse(long pid, String text) {

@@ -641,6 +641,39 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- Flame graph ---- */
+.flame {
+  position: relative;
+  width: 100%;
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.flame__frame {
+  position: absolute;
+  overflow: hidden;
+  border: 1px solid var(--bg);
+  border-radius: 2px;
+  cursor: pointer;
+  color: #1a1205;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.flame__frame:hover {
+  outline: 1px solid var(--text);
+  outline-offset: -1px;
+}
+
+.flame__label {
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
 /* ---- Badge ---- */
 .badge {
   font-size: 12px;

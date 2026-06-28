@@ -79,7 +79,7 @@ export function Sidebar({ selectedPid, onSelect }: SidebarProps) {
         </ul>
       </nav>
 
-      <div className="sidebar__footer">v0.1.0 · Phase 4</div>
+      <div className="sidebar__footer">v0.1.0 · Phase 5</div>
     </aside>
   )
 }
