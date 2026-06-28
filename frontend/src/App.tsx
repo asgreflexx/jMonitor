@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Sidebar } from './components/Sidebar'
-import { ProcessDetail } from './components/ProcessDetail'
+import { ProcessView } from './components/ProcessView'
 
 function App() {
   const [selectedPid, setSelectedPid] = useState<number | null>(null)
@@ -9,7 +9,7 @@ function App() {
     <div className="app">
       <Sidebar selectedPid={selectedPid} onSelect={setSelectedPid} />
       <main className="content">
-        {selectedPid === null ? <Welcome /> : <ProcessDetail pid={selectedPid} />}
+        {selectedPid === null ? <Welcome /> : <ProcessView pid={selectedPid} />}
       </main>
     </div>
   )
@@ -30,7 +30,7 @@ function Welcome() {
           </p>
           <ul>
             <li>Phase 1 — Process discovery &amp; connection (Attach API) ✓</li>
-            <li>Phase 2 — Live monitoring (memory, GC, threads, CPU)</li>
+            <li>Phase 2 — Live monitoring (memory, GC, threads, CPU) ✓</li>
             <li>Phase 3 — Time-series history</li>
             <li>Phase 4 — Thread dumps, MBean browser, heap histogram</li>
             <li>Phase 5 — JFR profiling &amp; flame graphs</li>

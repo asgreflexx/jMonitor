@@ -28,6 +28,44 @@ export interface JvmDetails {
   systemProperties: Record<string, string>
 }
 
+export interface GcStat {
+  name: string
+  collectionCount: number
+  collectionTimeMillis: number
+}
+
+export interface MemoryPoolStat {
+  name: string
+  type: string
+  used: number
+  committed: number
+  max: number
+}
+
+export interface MetricSnapshot {
+  pid: number
+  epochMillis: number
+  heapUsed: number
+  heapCommitted: number
+  heapMax: number
+  nonHeapUsed: number
+  nonHeapCommitted: number
+  processCpuLoad: number
+  systemCpuLoad: number
+  systemLoadAverage: number
+  threadCount: number
+  daemonThreadCount: number
+  peakThreadCount: number
+  totalStartedThreadCount: number
+  loadedClassCount: number
+  totalLoadedClassCount: number
+  unloadedClassCount: number
+  gcCount: number
+  gcTimeMillis: number
+  garbageCollectors: GcStat[]
+  memoryPools: MemoryPoolStat[]
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(path, { headers: { Accept: 'application/json' } })
   if (!res.ok) {
@@ -40,4 +78,6 @@ export const api = {
   health: () => getJson<HealthResponse>('/api/health'),
   processes: () => getJson<ProcessInfo[]>('/api/processes'),
   processDetails: (pid: number) => getJson<JvmDetails>(`/api/processes/${pid}`),
+  recentMetrics: (pid: number) =>
+    getJson<MetricSnapshot[]>(`/api/processes/${pid}/metrics/recent`),
 }
