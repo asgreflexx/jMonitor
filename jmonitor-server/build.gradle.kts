@@ -62,4 +62,11 @@ tasks.processResources {
             into("static")
         }
     }
+    // Bundle the shaded instrumentation agent jar so the server can extract and
+    // attach it at runtime (Phase 6).
+    dependsOn(":jmonitor-agent:shadowJar")
+    from(project(":jmonitor-agent").layout.buildDirectory.dir("libs")) {
+        include("jmonitor-agent.jar")
+        into("agent")
+    }
 }

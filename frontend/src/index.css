@@ -641,6 +641,18 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.bar-cell {
+  width: 140px;
+}
+
+.bar {
+  display: block;
+  height: 10px;
+  border-radius: 2px;
+  background: var(--accent);
+  min-width: 1px;
+}
+
 /* ---- Flame graph ---- */
 .flame {
   position: relative;

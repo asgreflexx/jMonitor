@@ -165,6 +165,18 @@ export interface JfrStatus {
   profile?: string
 }
 
+export interface MethodHotspot {
+  method: string
+  calls: number
+  totalNanos: number
+}
+
+export interface AgentStatus {
+  loaded: boolean
+  prefix: string | null
+  instrumentedClassCount: number
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(path, { headers: { Accept: 'application/json' } })
   if (!res.ok) {
@@ -232,4 +244,15 @@ export const api = {
     getJson<JfrRecordingInfo[]>(`/api/processes/${pid}/jfr/recordings`),
   jfrFlameGraph: (id: number) => getJson<FlameNode>(`/api/jfr/recordings/${id}/flamegraph`),
   jfrDownloadUrl: (id: number) => `/api/jfr/recordings/${id}/download`,
+
+  // ---- Phase 6: instrumentation agent ----
+  agentStatus: (pid: number) => getJson<AgentStatus>(`/api/processes/${pid}/agent/status`),
+  agentLoad: (pid: number, prefix: string) =>
+    postJson<AgentStatus>(`/api/processes/${pid}/agent/load?prefix=${encodeURIComponent(prefix)}`),
+  agentHotspots: (pid: number) =>
+    getJson<MethodHotspot[]>(`/api/processes/${pid}/agent/hotspots`),
+  agentReset: async (pid: number) => {
+    const res = await fetch(`/api/processes/${pid}/agent/reset`, { method: 'POST' })
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+  },
 }
