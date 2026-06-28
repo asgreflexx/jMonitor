@@ -2,14 +2,12 @@ package com.jmonitor.server.web;
 
 import com.jmonitor.common.dto.FlameNode;
 import com.jmonitor.common.dto.JfrRecordingInfo;
+import com.jmonitor.common.dto.JfrStatus;
 import com.jmonitor.server.jfr.JfrAnalyzer;
 import com.jmonitor.server.jfr.JfrRegistry;
 import com.jmonitor.server.jfr.JfrService;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,7 +20,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 
 /**
  * REST endpoints for JFR profiling (Phase 5): start/stop recordings, list saved
@@ -42,19 +39,15 @@ public class JfrController {
     }
 
     @GetMapping("/api/processes/{pid}/jfr/status")
-    public Map<String, Object> status(@PathVariable long pid) {
-        boolean recording = jfr.isRecording(pid);
-        return recording
-                ? Map.of("recording", true, "profile", String.valueOf(jfr.activeProfile(pid)))
-                : Map.of("recording", false);
+    public JfrStatus status(@PathVariable long pid) {
+        return jfr.status(pid);
     }
 
     @PostMapping("/api/processes/{pid}/jfr/start")
-    public Map<String, Object> start(@PathVariable long pid,
-                                     @RequestParam(defaultValue = "profile") String profile)
-            throws IOException {
+    public JfrStatus start(@PathVariable long pid,
+                           @RequestParam(defaultValue = "profile") String profile) throws IOException {
         jfr.start(pid, profile);
-        return Map.of("recording", true, "profile", profile);
+        return new JfrStatus(true, profile);
     }
 
     @PostMapping("/api/processes/{pid}/jfr/stop")
@@ -70,21 +63,17 @@ public class JfrController {
     @GetMapping("/api/jfr/recordings/{id}/flamegraph")
     public FlameNode flameGraph(@PathVariable long id) throws IOException {
         JfrRecordingInfo info = recording(id);
-        return analyzer.flameGraph(jfr.resolveRecordingFile(info.fileName()));
+        Path file = jfr.resolveRecordingFile(info.fileName());
+        if (!Files.exists(file)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recording file missing");
+        }
+        return analyzer.flameGraph(file);
     }
 
     @GetMapping("/api/jfr/recordings/{id}/download")
     public ResponseEntity<Resource> download(@PathVariable long id) {
         JfrRecordingInfo info = recording(id);
-        Path file = jfr.resolveRecordingFile(info.fileName());
-        if (!Files.exists(file)) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Recording file missing");
-        }
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + info.fileName() + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(new FileSystemResource(file));
+        return Downloads.attachment(jfr.resolveRecordingFile(info.fileName()), info.fileName());
     }
 
     private JfrRecordingInfo recording(long id) {

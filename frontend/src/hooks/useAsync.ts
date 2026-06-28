@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 export interface AsyncState<T> {
   data: T | null
@@ -20,11 +20,17 @@ export function useAsync<T>(key: unknown, fn: () => Promise<T>): AsyncState<T> {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [nonce, setNonce] = useState(0)
+  const keyRef = useRef(key)
 
   useEffect(() => {
     let cancelled = false
-    setData(null)
-    setError(null)
+    // Clear stale data only when the key changes (a new target); a manual
+    // reload keeps the current data visible to avoid flicker.
+    if (keyRef.current !== key) {
+      keyRef.current = key
+      setData(null)
+      setError(null)
+    }
     setLoading(true)
     fn()
       .then((d) => {

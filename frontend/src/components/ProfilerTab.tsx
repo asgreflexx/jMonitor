@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import { useAsync } from '../hooks/useAsync'
 import { FlameGraph } from './FlameGraph'
@@ -11,6 +11,10 @@ export function ProfilerTab({ pid }: { pid: number }) {
   const [profile, setProfile] = useState('profile')
   const [busy, setBusy] = useState(false)
   const [selected, setSelected] = useState<number | null>(null)
+
+  // Clear the selected flame graph when switching processes, so we never show
+  // one pid's recording under another.
+  useEffect(() => setSelected(null), [pid])
 
   const recording = status.data?.recording ?? false
 

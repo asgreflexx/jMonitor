@@ -1,7 +1,9 @@
 package com.jmonitor.server.jfr;
 
 import com.jmonitor.common.dto.JfrRecordingInfo;
+import com.jmonitor.common.dto.JfrStatus;
 import com.jmonitor.server.process.JvmConnectionManager;
+import com.jmonitor.server.support.SafePaths;
 import jdk.management.jfr.FlightRecorderMXBean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,9 +38,8 @@ public class JfrService {
     private final JfrRegistry registry;
     private final Path recordingsDir;
 
-    /** pid -> active recording id and its profile name. */
-    private final Map<Long, long[]> active = new ConcurrentHashMap<>();
-    private final Map<Long, String> activeProfile = new ConcurrentHashMap<>();
+    /** pid -> the single active recording for that process. */
+    private final Map<Long, ActiveRecording> active = new ConcurrentHashMap<>();
 
     public JfrService(JvmConnectionManager connections,
                       JfrRegistry registry,
@@ -48,16 +49,17 @@ public class JfrService {
         this.recordingsDir = Path.of(dataDir).resolveSibling("jfr");
     }
 
-    public boolean isRecording(long pid) {
-        return active.containsKey(pid);
+    public JfrStatus status(long pid) {
+        ActiveRecording rec = active.get(pid);
+        return rec == null ? new JfrStatus(false, null) : new JfrStatus(true, rec.profile());
     }
 
-    public String activeProfile(long pid) {
-        return activeProfile.get(pid);
-    }
-
-    /** Starts a recording with the given predefined profile ("default" or "profile"). */
-    public void start(long pid, String profile) throws IOException {
+    /**
+     * Starts a recording with the given predefined profile ("default" or
+     * "profile"). Synchronized so a concurrent double-start can't create and
+     * leak two recordings on the target.
+     */
+    public synchronized void start(long pid, String profile) throws IOException {
         if (!ALLOWED_PROFILES.contains(profile)) {
             throw new IllegalArgumentException("Unknown JFR profile: " + profile);
         }
@@ -65,26 +67,30 @@ public class JfrService {
             throw new IllegalArgumentException("A recording is already running for pid " + pid);
         }
         FlightRecorderMXBean jfr = bean(pid);
+        long id;
         try {
-            long id = jfr.newRecording();
+            id = jfr.newRecording();
             jfr.setPredefinedConfiguration(id, profile);
             jfr.startRecording(id);
-            active.put(pid, new long[]{id});
-            activeProfile.put(pid, profile);
-            log.info("Started JFR recording {} (profile {}) on pid {}", id, profile, pid);
         } catch (Exception e) {
             throw new IOException("Failed to start JFR recording: " + e.getMessage(), e);
         }
+        active.put(pid, new ActiveRecording(id, profile));
+        log.info("Started JFR recording {} (profile {}) on pid {}", id, profile, pid);
     }
 
-    /** Stops the active recording, copies the .jfr to the server and registers it. */
-    public JfrRecordingInfo stop(long pid) throws IOException {
-        long[] handle = active.remove(pid);
-        String profile = activeProfile.remove(pid);
-        if (handle == null) {
+    /**
+     * Stops the active recording, copies the .jfr to the server and registers
+     * it. Synchronized with {@link #start}. The recording is always closed and
+     * its tracking removed (in the finally block) even on failure, so a failed
+     * copy can never leak an open recording on the target.
+     */
+    public synchronized JfrRecordingInfo stop(long pid) throws IOException {
+        ActiveRecording rec = active.get(pid);
+        if (rec == null) {
             throw new IllegalArgumentException("No active recording for pid " + pid);
         }
-        long id = handle[0];
+        long id = rec.id();
         FlightRecorderMXBean jfr = bean(pid);
         try {
             jfr.stopRecording(id);
@@ -97,26 +103,32 @@ public class JfrService {
                 target = recordingsDir.resolve(fileName);
             }
             jfr.copyTo(id, target.toAbsolutePath().toString());
-            jfr.closeRecording(id);
             if (!Files.exists(target)) {
                 throw new IOException("JFR file was not created at " + target);
             }
             log.info("Stopped JFR recording {} on pid {} -> {}", id, pid, fileName);
-            return registry.insert(pid, fileName, Files.size(target), now,
-                    profile == null ? "unknown" : profile);
+            return registry.insert(pid, fileName, Files.size(target), now, rec.profile());
         } catch (IOException e) {
             throw e;
         } catch (Exception e) {
             throw new IOException("Failed to stop JFR recording: " + e.getMessage(), e);
+        } finally {
+            // Always close the target recording and drop tracking — never leak.
+            try {
+                jfr.closeRecording(id);
+            } catch (Exception ignore) {
+                // target may already have closed it
+            }
+            active.remove(pid);
         }
     }
 
     public Path resolveRecordingFile(String fileName) {
-        Path p = recordingsDir.resolve(fileName).normalize();
-        if (!p.startsWith(recordingsDir)) {
-            throw new IllegalArgumentException("Invalid recording file name: " + fileName);
-        }
-        return p;
+        return SafePaths.resolveWithin(recordingsDir, fileName);
+    }
+
+    /** The single active recording per process: JFR recording id + its profile. */
+    private record ActiveRecording(long id, String profile) {
     }
 
     private FlightRecorderMXBean bean(long pid) throws IOException {
