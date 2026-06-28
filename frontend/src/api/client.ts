@@ -75,8 +75,86 @@ export interface MetricHistory {
   series: Record<string, number[]>
 }
 
+export interface ThreadInfoDto {
+  id: number
+  name: string
+  state: string
+  stackTrace: string[]
+  lockName: string | null
+  lockOwnerId: number
+  lockOwnerName: string | null
+  blockedCount: number
+  waitedCount: number
+  inNative: boolean
+  suspended: boolean
+  deadlocked: boolean
+}
+
+export interface ThreadDump {
+  pid: number
+  epochMillis: number
+  threads: ThreadInfoDto[]
+  deadlockedIds: number[]
+}
+
+export interface MBeanAttribute {
+  name: string
+  type: string
+  readable: boolean
+  writable: boolean
+  description: string
+  value: string
+}
+
+export interface MBeanOperation {
+  name: string
+  returnType: string
+  parameterTypes: string[]
+  description: string
+}
+
+export interface MBeanDetails {
+  objectName: string
+  className: string
+  description: string
+  attributes: MBeanAttribute[]
+  operations: MBeanOperation[]
+}
+
+export interface HeapHistogramRow {
+  rank: number
+  instances: number
+  bytes: number
+  className: string
+}
+
+export interface HeapHistogram {
+  pid: number
+  epochMillis: number
+  totalInstances: number
+  totalBytes: number
+  rows: HeapHistogramRow[]
+}
+
+export interface HeapDumpInfo {
+  id: number
+  pid: number
+  fileName: string
+  sizeBytes: number
+  createdMillis: number
+  live: boolean
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(path, { headers: { Accept: 'application/json' } })
+  if (!res.ok) {
+    throw new Error(`${res.status} ${res.statusText}`)
+  }
+  return res.json() as Promise<T>
+}
+
+async function postJson<T>(path: string): Promise<T> {
+  const res = await fetch(path, { method: 'POST', headers: { Accept: 'application/json' } })
   if (!res.ok) {
     throw new Error(`${res.status} ${res.statusText}`)
   }
@@ -94,4 +172,34 @@ export const api = {
       `/api/processes/${pid}/metrics/history?from=${fromMillis}&to=${toMillis}` +
         (metrics && metrics.length ? `&metrics=${metrics.join(',')}` : ''),
     ),
+
+  // ---- Phase 4: diagnostics ----
+  threadDump: (pid: number) => getJson<ThreadDump>(`/api/processes/${pid}/threaddump`),
+
+  mbeans: (pid: number) => getJson<string[]>(`/api/processes/${pid}/mbeans`),
+  mbeanDetails: (pid: number, name: string) =>
+    getJson<MBeanDetails>(
+      `/api/processes/${pid}/mbeans/details?name=${encodeURIComponent(name)}`,
+    ),
+  invokeMBean: (pid: number, name: string, operation: string) =>
+    postJson<{ result: string }>(
+      `/api/processes/${pid}/mbeans/invoke?name=${encodeURIComponent(name)}` +
+        `&operation=${encodeURIComponent(operation)}`,
+    ),
+  setMBeanAttribute: async (pid: number, name: string, attribute: string, value: string) => {
+    const res = await fetch(
+      `/api/processes/${pid}/mbeans/attribute?name=${encodeURIComponent(name)}` +
+        `&attribute=${encodeURIComponent(attribute)}&value=${encodeURIComponent(value)}`,
+      { method: 'POST' },
+    )
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+  },
+
+  heapHistogram: (pid: number) =>
+    getJson<HeapHistogram>(`/api/processes/${pid}/heap/histogram`),
+  heapDump: (pid: number, live: boolean) =>
+    postJson<HeapDumpInfo>(`/api/processes/${pid}/heap/dump?live=${live}`),
+  heapDumps: (pid: number) =>
+    getJson<HeapDumpInfo[]>(`/api/processes/${pid}/heap/dumps`),
+  heapDumpDownloadUrl: (id: number) => `/api/heap/dumps/${id}/download`,
 }

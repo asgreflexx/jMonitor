@@ -1,6 +1,14 @@
 spring:
   application:
     name: jmonitor
+  datasource:
+    url: jdbc:h2:file:${user.home}/.jmonitor/db/jmonitor;AUTO_SERVER=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
 
 server:
   port: 8080

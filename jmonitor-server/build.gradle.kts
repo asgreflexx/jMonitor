@@ -17,6 +17,10 @@ dependencies {
     // Time-series persistence (round-robin database with built-in roll-ups).
     implementation("org.rrd4j:rrd4j:3.9")
 
+    // Embedded relational store for diagnostic artifact metadata (heap dumps).
+    implementation("org.springframework.boot:spring-boot-starter-jdbc")
+    runtimeOnly("com.h2database:h2")
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
