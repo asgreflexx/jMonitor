@@ -34,6 +34,14 @@ interface ViewModel {
   }
 }
 
+/** CSV export URL for the selected range (live exports the last hour). */
+function csvHref(pid: number, range: RangeKey): string {
+  const r = RANGES.find((x) => x.key === range)
+  if (!r?.ms) return api.metricsCsvUrl(pid)
+  const to = Date.now()
+  return api.metricsCsvUrl(pid, to - r.ms, to)
+}
+
 const lastFinite = (a: number[]): number => {
   for (let i = a.length - 1; i >= 0; i--) if (Number.isFinite(a[i])) return a[i]
   return 0
@@ -50,8 +58,8 @@ export function Overview({ pid }: { pid: number }) {
 
   // Poll threshold alerts while live (they reflect the latest sampled values).
   useEffect(() => {
+    setAlerts([]) // never carry a previous process's/range's alerts over
     if (range !== 'live') {
-      setAlerts([])
       return
     }
     let cancelled = false
@@ -173,7 +181,7 @@ export function Overview({ pid }: { pid: number }) {
           </button>
         ))}
         <span className="toolbar__sep" />
-        <a className="btn btn--small" href={api.metricsCsvUrl(pid)}>
+        <a className="btn btn--small" href={csvHref(pid, range)}>
           Export CSV
         </a>
       </div>

@@ -213,7 +213,9 @@ export const api = {
         (metrics && metrics.length ? `&metrics=${metrics.join(',')}` : ''),
     ),
   alerts: (pid: number) => getJson<Alert[]>(`/api/processes/${pid}/alerts`),
-  metricsCsvUrl: (pid: number) => `/api/processes/${pid}/metrics/export.csv`,
+  metricsCsvUrl: (pid: number, fromMillis?: number, toMillis?: number) =>
+    `/api/processes/${pid}/metrics/export.csv` +
+    (fromMillis && toMillis ? `?from=${fromMillis}&to=${toMillis}` : ''),
 
   // ---- Phase 4: diagnostics ----
   threadDump: (pid: number) => getJson<ThreadDump>(`/api/processes/${pid}/threaddump`),

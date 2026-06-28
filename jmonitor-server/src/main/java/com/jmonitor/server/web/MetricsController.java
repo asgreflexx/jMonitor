@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -80,7 +81,9 @@ public class MetricsController {
             for (String c : columns) {
                 double[] values = h.series().get(c);
                 double v = i < values.length ? values[i] : Double.NaN;
-                csv.append(',').append(Double.isNaN(v) ? "" : v);
+                // toPlainString avoids scientific notation (e.g. 1.7E8) that
+                // trips up spreadsheets for large byte counts.
+                csv.append(',').append(Double.isNaN(v) ? "" : BigDecimal.valueOf(v).toPlainString());
             }
             csv.append('\n');
         }
