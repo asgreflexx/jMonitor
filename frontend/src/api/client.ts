@@ -66,6 +66,15 @@ export interface MetricSnapshot {
   memoryPools: MemoryPoolStat[]
 }
 
+export interface MetricHistory {
+  pid: number
+  fromMillis: number
+  toMillis: number
+  stepMillis: number
+  timestamps: number[]
+  series: Record<string, number[]>
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(path, { headers: { Accept: 'application/json' } })
   if (!res.ok) {
@@ -80,4 +89,9 @@ export const api = {
   processDetails: (pid: number) => getJson<JvmDetails>(`/api/processes/${pid}`),
   recentMetrics: (pid: number) =>
     getJson<MetricSnapshot[]>(`/api/processes/${pid}/metrics/recent`),
+  history: (pid: number, fromMillis: number, toMillis: number, metrics?: string[]) =>
+    getJson<MetricHistory>(
+      `/api/processes/${pid}/metrics/history?from=${fromMillis}&to=${toMillis}` +
+        (metrics && metrics.length ? `&metrics=${metrics.join(',')}` : ''),
+    ),
 }

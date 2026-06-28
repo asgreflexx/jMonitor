@@ -22,15 +22,18 @@ public class MetricStreamPublisher {
     private final MetricSubscriptionRegistry registry;
     private final MetricSampler sampler;
     private final MetricHistoryStore history;
+    private final MetricArchive archive;
     private final SimpMessagingTemplate messaging;
 
     public MetricStreamPublisher(MetricSubscriptionRegistry registry,
                                  MetricSampler sampler,
                                  MetricHistoryStore history,
+                                 MetricArchive archive,
                                  SimpMessagingTemplate messaging) {
         this.registry = registry;
         this.sampler = sampler;
         this.history = history;
+        this.archive = archive;
         this.messaging = messaging;
     }
 
@@ -40,6 +43,7 @@ public class MetricStreamPublisher {
             try {
                 MetricSnapshot snapshot = sampler.sample(pid);
                 history.add(snapshot);
+                archive.record(snapshot);
                 messaging.convertAndSend("/topic/metrics/" + pid, snapshot);
             } catch (IOException e) {
                 // Target likely exited or became unreachable; drop its history.

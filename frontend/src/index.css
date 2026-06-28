@@ -239,6 +239,34 @@ body {
   border-bottom-color: var(--accent);
 }
 
+/* ---- Range selector ---- */
+.range-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.range-btn {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.range-btn:hover {
+  color: var(--text);
+}
+
+.range-btn--active {
+  color: var(--text);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
 /* ---- Metric tiles ---- */
 .tile-grid {
   display: grid;

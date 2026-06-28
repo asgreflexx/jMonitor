@@ -10,6 +10,8 @@ jmonitor:
   sample-interval-ms: 1000
   # Number of recent samples kept per process in the in-memory ring buffer.
   history-size: 300
+  # Directory for the RRD4J time-series files (one .rrd per pid).
+  data-dir: ${user.home}/.jmonitor/rrd
 
 management:
   endpoints:
