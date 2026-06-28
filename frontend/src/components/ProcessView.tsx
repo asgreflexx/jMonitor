@@ -3,13 +3,23 @@ import { api, type JvmDetails } from '../api/client'
 import { shortName } from '../util/format'
 import { Overview } from './Overview'
 import { Details } from './ProcessDetail'
+import { ThreadsTab } from './ThreadsTab'
+import { MBeansTab } from './MBeansTab'
+import { MemoryTab } from './MemoryTab'
 
-type Tab = 'overview' | 'details'
+type Tab = 'overview' | 'threads' | 'mbeans' | 'memory' | 'details'
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'threads', label: 'Threads' },
+  { key: 'mbeans', label: 'MBeans' },
+  { key: 'memory', label: 'Memory' },
+  { key: 'details', label: 'Details' },
+]
 
 /**
- * Container for a selected JVM: connection header, tab bar, and the active tab
- * (live Overview or static Details). Polls details so the header uptime stays
- * fresh; live metrics flow through the Overview's WebSocket stream.
+ * Container for a selected JVM: connection header, tab bar, and the active tab.
+ * Polls details so the header uptime stays fresh; the tabs fetch on demand.
  */
 export function ProcessView({ pid }: { pid: number }) {
   const [details, setDetails] = useState<JvmDetails | null>(null)
@@ -67,24 +77,24 @@ export function ProcessView({ pid }: { pid: number }) {
       </header>
 
       <div className="tabs">
-        <button
-          type="button"
-          className={'tab' + (tab === 'overview' ? ' tab--active' : '')}
-          onClick={() => setTab('overview')}
-        >
-          Overview
-        </button>
-        <button
-          type="button"
-          className={'tab' + (tab === 'details' ? ' tab--active' : '')}
-          onClick={() => setTab('details')}
-        >
-          Details
-        </button>
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            className={'tab' + (tab === t.key ? ' tab--active' : '')}
+            onClick={() => setTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
       <section className="content__body">
-        {tab === 'overview' ? <Overview pid={pid} /> : <Details details={details} />}
+        {tab === 'overview' && <Overview pid={pid} />}
+        {tab === 'threads' && <ThreadsTab pid={pid} />}
+        {tab === 'mbeans' && <MBeansTab pid={pid} />}
+        {tab === 'memory' && <MemoryTab pid={pid} />}
+        {tab === 'details' && <Details details={details} />}
       </section>
     </>
   )

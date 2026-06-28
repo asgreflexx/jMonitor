@@ -32,7 +32,7 @@ function Welcome() {
             <li>Phase 1 — Process discovery &amp; connection (Attach API) ✓</li>
             <li>Phase 2 — Live monitoring (memory, GC, threads, CPU) ✓</li>
             <li>Phase 3 — Time-series history (RRD4J) ✓</li>
-            <li>Phase 4 — Thread dumps, MBean browser, heap histogram</li>
+            <li>Phase 4 — Thread dumps, MBean browser, heap histogram ✓</li>
             <li>Phase 5 — JFR profiling &amp; flame graphs</li>
           </ul>
         </div>

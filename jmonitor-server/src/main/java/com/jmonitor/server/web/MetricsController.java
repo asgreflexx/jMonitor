@@ -4,13 +4,11 @@ import com.jmonitor.common.dto.MetricHistory;
 import com.jmonitor.common.dto.MetricSnapshot;
 import com.jmonitor.server.metrics.MetricArchive;
 import com.jmonitor.server.metrics.MetricHistoryStore;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.List;
@@ -48,15 +46,11 @@ public class MetricsController {
             @PathVariable long pid,
             @RequestParam(required = false) Long from,
             @RequestParam(required = false) Long to,
-            @RequestParam(required = false) List<String> metrics) {
+            @RequestParam(required = false) List<String> metrics) throws IOException {
         long now = System.currentTimeMillis();
         long toMillis = to != null ? to : now;
         long fromMillis = from != null ? from : toMillis - 3_600_000L;
-        try {
-            return archive.fetch(pid, fromMillis, toMillis,
-                    metrics == null ? List.of() : metrics);
-        } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage(), e);
-        }
+        return archive.fetch(pid, fromMillis, toMillis,
+                metrics == null ? List.of() : metrics);
     }
 }

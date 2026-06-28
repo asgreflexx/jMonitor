@@ -3,12 +3,10 @@ package com.jmonitor.server.web;
 import com.jmonitor.common.dto.JvmDetails;
 import com.jmonitor.common.dto.ProcessInfo;
 import com.jmonitor.server.process.ProcessService;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.util.List;
@@ -32,12 +30,9 @@ public class ProcessController {
     }
 
     @GetMapping("/{pid}")
-    public JvmDetails details(@PathVariable long pid) {
-        try {
-            return service.details(pid);
-        } catch (IOException e) {
-            // The target could not be attached to (gone, not attachable, or denied).
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, e.getMessage(), e);
-        }
+    public JvmDetails details(@PathVariable long pid) throws IOException {
+        // A target that can't be attached to (gone, not attachable, or denied)
+        // throws IOException, mapped to 502 by ApiExceptionHandler.
+        return service.details(pid);
     }
 }
