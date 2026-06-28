@@ -39,7 +39,9 @@ public final class MethodStats {
     /**
      * Serialises the top {@code limit} methods by total time as one row per line:
      * {@code method\tcalls\ttotalNanos}. A compact, dependency-free wire format
-     * the server parses back into structured hotspots.
+     * the server parses back into structured hotspots. Safe because the key is a
+     * {@code type.method(descriptor)} string, which never contains a tab or
+     * newline.
      */
     public static String dump(int limit) {
         StringBuilder sb = new StringBuilder();

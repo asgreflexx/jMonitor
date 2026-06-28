@@ -87,6 +87,35 @@ public class JvmConnectionManager implements AutoCloseable {
         }
     }
 
+    /**
+     * Attaches to the target, loads a java-agent and detaches. Centralises the
+     * Attach API dance so callers don't reimplement it.
+     *
+     * @throws IOException if attach or agent loading fails
+     */
+    public void loadAgent(long pid, String agentJarPath, String options) throws IOException {
+        if (isSelf(pid)) {
+            throw new IllegalArgumentException("Cannot attach jMonitor to its own JVM (pid " + pid + ")");
+        }
+        VirtualMachine vm = null;
+        try {
+            vm = VirtualMachine.attach(Long.toString(pid));
+            vm.loadAgent(agentJarPath, options);
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException("Failed to load agent into pid " + pid + ": " + e.getMessage(), e);
+        } finally {
+            if (vm != null) {
+                try {
+                    vm.detach();
+                } catch (IOException ignore) {
+                    // best effort
+                }
+            }
+        }
+    }
+
     /** Closes and forgets the connector for a single pid. */
     public void evict(long pid) {
         JMXConnector c = connectors.remove(pid);

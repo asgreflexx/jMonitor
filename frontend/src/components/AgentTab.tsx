@@ -1,57 +1,72 @@
 import { useEffect, useState } from 'react'
-import { api, type MethodHotspot } from '../api/client'
-import { useAsync } from '../hooks/useAsync'
+import { api, type AgentStatus, type MethodHotspot } from '../api/client'
 
 const REFRESH_MS = 2000
 
 /** Instrumentation-agent control + method hotspots (Phase 6). */
 export function AgentTab({ pid }: { pid: number }) {
-  const status = useAsync(pid, () => api.agentStatus(pid))
+  const [status, setStatus] = useState<AgentStatus | null>(null)
+  const [hotspots, setHotspots] = useState<MethodHotspot[]>([])
   const [prefix, setPrefix] = useState('')
   const [busy, setBusy] = useState(false)
-  const [hotspots, setHotspots] = useState<MethodHotspot[]>([])
   const [error, setError] = useState<string | null>(null)
 
-  const loaded = status.data?.loaded ?? false
-
-  // Poll hotspots while the agent is loaded.
+  // Poll status (so the instrumented-class count stays live) and, when loaded,
+  // hotspots. Everything resets when the selected process changes.
   useEffect(() => {
-    if (!loaded) {
-      setHotspots([])
-      return
-    }
     let cancelled = false
-    const load = () =>
-      api
-        .agentHotspots(pid)
-        .then((h) => {
-          if (!cancelled) {
-            setHotspots(h)
-            setError(null)
-          }
-        })
-        .catch((e: unknown) => {
-          if (!cancelled) setError(String(e))
-        })
-    load()
-    const timer = setInterval(load, REFRESH_MS)
+    setStatus(null)
+    setHotspots([])
+    setError(null)
+    setPrefix('')
+
+    const tick = async () => {
+      try {
+        const st = await api.agentStatus(pid)
+        if (cancelled) return
+        setStatus(st)
+        if (st.loaded) {
+          const h = await api.agentHotspots(pid)
+          if (!cancelled) setHotspots(h)
+        } else {
+          setHotspots([])
+        }
+        if (!cancelled) setError(null)
+      } catch (e: unknown) {
+        if (!cancelled) setError(String(e))
+      }
+    }
+
+    tick()
+    const timer = setInterval(tick, REFRESH_MS)
     return () => {
       cancelled = true
       clearInterval(timer)
     }
-  }, [pid, loaded])
+  }, [pid])
+
+  const loaded = status?.loaded ?? false
 
   const onLoad = () => {
     setBusy(true)
     api
       .agentLoad(pid, prefix)
-      .then(() => status.reload())
+      .then((st) => {
+        setStatus(st)
+        setError(null)
+      })
       .catch((e: unknown) => alert(`Load failed: ${e}`))
       .finally(() => setBusy(false))
   }
 
   const onReset = () => {
-    api.agentReset(pid).then(() => setHotspots([])).catch((e: unknown) => alert(`Reset failed: ${e}`))
+    api
+      .agentReset(pid)
+      .then(() => {
+        setHotspots([])
+        setError(null)
+      })
+      .catch((e: unknown) => alert(`Reset failed: ${e}`))
   }
 
   const maxTotal = hotspots.reduce((m, h) => Math.max(m, h.totalNanos), 1)
@@ -75,7 +90,7 @@ export function AgentTab({ pid }: { pid: number }) {
         ) : (
           <>
             <span className="badge badge--ok">
-              instrumenting "{status.data?.prefix}" · {status.data?.instrumentedClassCount} classes
+              instrumenting "{status?.prefix}" · {status?.instrumentedClassCount} classes
             </span>
             <span className="toolbar__sep" />
             <button type="button" className="btn" onClick={onReset}>

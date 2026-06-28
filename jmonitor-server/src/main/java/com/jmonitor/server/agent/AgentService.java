@@ -3,7 +3,6 @@ package com.jmonitor.server.agent;
 import com.jmonitor.common.dto.AgentStatus;
 import com.jmonitor.common.dto.MethodHotspot;
 import com.jmonitor.server.process.JvmConnectionManager;
-import com.sun.tools.attach.VirtualMachine;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,6 +49,15 @@ public class AgentService {
         }
         Path temp = Files.createTempFile("jmonitor-agent", ".jar");
         temp.toFile().deleteOnExit();
+        // Restrict to the owner on POSIX hosts so other local users can't read
+        // the bundled agent jar from the shared temp directory.
+        try {
+            Files.setPosixFilePermissions(temp,
+                    java.util.EnumSet.of(java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+                            java.nio.file.attribute.PosixFilePermission.OWNER_WRITE));
+        } catch (UnsupportedOperationException ignore) {
+            // non-POSIX filesystem; default permissions apply
+        }
         try (InputStream in = resource.getInputStream(); OutputStream out = Files.newOutputStream(temp)) {
             StreamUtils.copy(in, out);
         }
@@ -73,8 +81,12 @@ public class AgentService {
         }
     }
 
-    /** Attaches and loads the agent, instrumenting classes under {@code prefix}. */
-    public void load(long pid, String prefix) throws IOException {
+    /**
+     * Attaches and loads the agent, instrumenting classes under {@code prefix}.
+     * Synchronized so a concurrent double-load can't race past the
+     * already-loaded check and have the second {@code agentmain} fail.
+     */
+    public synchronized void load(long pid, String prefix) throws IOException {
         if (prefix == null || prefix.isBlank()) {
             throw new IllegalArgumentException("An instrumentation prefix is required");
         }
@@ -92,22 +104,8 @@ public class AgentService {
             throw new IllegalArgumentException("Agent already loaded in pid " + pid);
         }
 
-        VirtualMachine vm = null;
-        try {
-            vm = VirtualMachine.attach(Long.toString(pid));
-            vm.loadAgent(agentJar.toAbsolutePath().toString(), prefix.trim());
-            log.info("Loaded instrumentation agent into pid {} (prefix {})", pid, prefix);
-        } catch (Exception e) {
-            throw new IOException("Failed to load agent: " + e.getMessage(), e);
-        } finally {
-            if (vm != null) {
-                try {
-                    vm.detach();
-                } catch (IOException ignore) {
-                    // best effort
-                }
-            }
-        }
+        connections.loadAgent(pid, agentJar.toAbsolutePath().toString(), prefix.trim());
+        log.info("Loaded instrumentation agent into pid {} (prefix {})", pid, prefix);
     }
 
     public List<MethodHotspot> hotspots(long pid) throws IOException {

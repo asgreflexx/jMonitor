@@ -21,7 +21,9 @@ public final class TimingAdvice {
     }
 
     @Advice.OnMethodExit(onThrowable = Throwable.class)
-    public static void exit(@Advice.Origin("#t.#m") String method, @Advice.Enter long start) {
+    public static void exit(@Advice.Origin("#t.#m#d") String method, @Advice.Enter long start) {
+        // "#t.#m#d" includes the method descriptor so overloaded methods are
+        // counted separately rather than merged.
         MethodStats.record(method, System.nanoTime() - start);
     }
 }

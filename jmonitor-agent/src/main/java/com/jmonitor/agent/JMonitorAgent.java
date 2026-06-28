@@ -35,7 +35,10 @@ public final class JMonitorAgent {
         if (prefix.isEmpty()) {
             throw new IllegalArgumentException("A non-empty instrumentation prefix is required");
         }
-        // Refuse to instrument core libraries — far too broad and unsafe.
+        // Refuse to instrument core libraries — far too broad and unsafe. The
+        // server (AgentService) validates the same way before attaching; this is
+        // an independent backstop since the agent module is self-contained and
+        // shares no code with the server.
         if (prefix.startsWith("java.") || prefix.startsWith("jdk.")
                 || prefix.startsWith("sun.") || prefix.startsWith("com.sun.")) {
             throw new IllegalArgumentException("Refusing to instrument core package: " + prefix);
@@ -53,6 +56,10 @@ public final class JMonitorAgent {
         new AgentBuilder.Default()
                 .disableClassFormatChanges()
                 .with(AgentBuilder.RedefinitionStrategy.RETRANSFORMATION)
+                // Never instrument the agent's own classes or ByteBuddy: doing so
+                // would make TimingAdvice.exit -> MethodStats.record recurse
+                // infinitely (StackOverflowError) if the prefix matched them.
+                .ignore(nameStartsWith("com.jmonitor.agent").or(nameStartsWith("net.bytebuddy.")))
                 .type(nameStartsWith(prefix))
                 .transform((builder, typeDescription, classLoader, module, pd) -> builder
                         .visit(Advice.to(TimingAdvice.class)
