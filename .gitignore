@@ -1,0 +1,19 @@
+# Gradle
+.gradle/
+build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Node / frontend
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# OS
+.DS_Store
+
+# Logs / runtime
+*.log
