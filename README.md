@@ -71,16 +71,42 @@ curl http://localhost:8080/api/health
 
 ## Roadmap
 
-| Phase | Scope                                                            |
-|-------|-----------------------------------------------------------------|
-| 0     | Scaffold (this) — build pipeline, server, GUI shell             |
-| 1     | Process discovery & connection (Attach API)                     |
-| 2     | Live monitoring: memory, GC, threads, CPU, classes              |
-| 3     | Time-series persistence & historical charts                     |
-| 4     | Thread dumps, MBean browser, heap histogram                     |
-| 5     | JFR profiling & flame graphs                                     |
-| 6     | java-agent: method profiling, allocation tracking               |
-| 7     | Alerts, multi-process compare, packaging                        |
+| Phase | Scope                                                            | Status |
+|-------|-----------------------------------------------------------------|--------|
+| 0     | Scaffold — build pipeline, server, GUI shell                     | ✅ |
+| 1     | Process discovery & connection (Attach API)                     | ✅ |
+| 2     | Live monitoring: memory, GC, threads, CPU, classes              | ✅ |
+| 3     | Time-series persistence (RRD4J) & historical charts             | ✅ |
+| 4     | Thread dumps, MBean browser, heap histogram & dumps (H2)        | ✅ |
+| 5     | JFR profiling & flame graphs                                    | ✅ |
+| 6     | java-agent: method profiling (ByteBuddy)                        | ✅ |
+| 7     | Threshold alerts & metric CSV export                            | ✅ |
+
+### Configuration (alerts)
+
+Alert thresholds are percentages, configurable in `application.yml` (or via
+`--jmonitor.alerts.*` flags):
+
+```yaml
+jmonitor:
+  alerts:
+    heap-warn-percent: 80
+    heap-critical-percent: 90
+    cpu-warn-percent: 85
+    cpu-critical-percent: 95
+```
+
+Active alerts surface as a banner on a process's Overview; metric history can be
+exported as CSV from the same view.
+
+### Out of scope (by design)
+
+- **Docker image** — jMonitor uses the JDK Attach API to inspect JVMs on the
+  *same host*; running it in a container would isolate it from the host's JVMs,
+  so it ships as a self-contained boot jar instead.
+- **Authentication** — intended as a local developer tool bound to localhost.
+  Put it behind a reverse proxy if exposing it beyond the local machine.
+- **Multi-process comparison** — a possible future addition.
 
 ## License
 

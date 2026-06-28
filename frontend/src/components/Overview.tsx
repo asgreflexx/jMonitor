@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { api, type MetricSnapshot } from '../api/client'
+import { api, type Alert, type MetricSnapshot } from '../api/client'
 import { subscribeMetrics } from '../ws/metricsStream'
 import { ChartLine } from './ChartLine'
 
@@ -34,6 +34,14 @@ interface ViewModel {
   }
 }
 
+/** CSV export URL for the selected range (live exports the last hour). */
+function csvHref(pid: number, range: RangeKey): string {
+  const r = RANGES.find((x) => x.key === range)
+  if (!r?.ms) return api.metricsCsvUrl(pid)
+  const to = Date.now()
+  return api.metricsCsvUrl(pid, to - r.ms, to)
+}
+
 const lastFinite = (a: number[]): number => {
   for (let i = a.length - 1; i >= 0; i--) if (Number.isFinite(a[i])) return a[i]
   return 0
@@ -46,6 +54,29 @@ export function Overview({ pid }: { pid: number }) {
   const [range, setRange] = useState<RangeKey>('live')
   const [snaps, setSnaps] = useState<MetricSnapshot[]>([])
   const [model, setModel] = useState<ViewModel | null>(null)
+  const [alerts, setAlerts] = useState<Alert[]>([])
+
+  // Poll threshold alerts while live (they reflect the latest sampled values).
+  useEffect(() => {
+    setAlerts([]) // never carry a previous process's/range's alerts over
+    if (range !== 'live') {
+      return
+    }
+    let cancelled = false
+    const load = () =>
+      api
+        .alerts(pid)
+        .then((a) => {
+          if (!cancelled) setAlerts(a)
+        })
+        .catch(() => {})
+    load()
+    const timer = setInterval(load, 3000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [pid, range])
 
   // Live mode: backfill from the ring buffer, then stream over WebSocket.
   useEffect(() => {
@@ -149,7 +180,26 @@ export function Overview({ pid }: { pid: number }) {
             {r.label}
           </button>
         ))}
+        <span className="toolbar__sep" />
+        <a className="btn btn--small" href={csvHref(pid, range)}>
+          Export CSV
+        </a>
       </div>
+
+      {alerts.length > 0 && (
+        <div className="alert-stack">
+          {alerts.map((a) => (
+            <div
+              key={a.metric}
+              className={
+                'alert ' + (a.level === 'CRITICAL' ? 'alert--error' : 'alert--warn')
+              }
+            >
+              <strong>{a.level}</strong> · {a.message}
+            </div>
+          ))}
+        </div>
+      )}
 
       {!vm ? (
         <div className="detail__status">

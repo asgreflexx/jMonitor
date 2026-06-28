@@ -20,6 +20,12 @@ jmonitor:
   history-size: 300
   # Directory for the RRD4J time-series files (one .rrd per pid).
   data-dir: ${user.home}/.jmonitor/rrd
+  # Threshold alerts (percent) evaluated against the latest sample.
+  alerts:
+    heap-warn-percent: 80
+    heap-critical-percent: 90
+    cpu-warn-percent: 85
+    cpu-critical-percent: 95
 
 management:
   endpoints:
