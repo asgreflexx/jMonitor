@@ -81,3 +81,7 @@ curl http://localhost:8080/api/health
 | 5     | JFR profiling & flame graphs                                     |
 | 6     | java-agent: method profiling, allocation tracking               |
 | 7     | Alerts, multi-process compare, packaging                        |
+
+## License
+
+[MIT](LICENSE) — free to fork, use, modify and distribute, including commercially.
