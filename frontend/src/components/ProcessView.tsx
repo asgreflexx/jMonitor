@@ -7,8 +7,9 @@ import { ThreadsTab } from './ThreadsTab'
 import { MBeansTab } from './MBeansTab'
 import { MemoryTab } from './MemoryTab'
 import { ProfilerTab } from './ProfilerTab'
+import { AgentTab } from './AgentTab'
 
-type Tab = 'overview' | 'threads' | 'mbeans' | 'memory' | 'profiler' | 'details'
+type Tab = 'overview' | 'threads' | 'mbeans' | 'memory' | 'profiler' | 'agent' | 'details'
 
 const TABS: { key: Tab; label: string }[] = [
   { key: 'overview', label: 'Overview' },
@@ -16,6 +17,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'mbeans', label: 'MBeans' },
   { key: 'memory', label: 'Memory' },
   { key: 'profiler', label: 'Profiler' },
+  { key: 'agent', label: 'Agent' },
   { key: 'details', label: 'Details' },
 ]
 
@@ -97,6 +99,7 @@ export function ProcessView({ pid }: { pid: number }) {
         {tab === 'mbeans' && <MBeansTab pid={pid} />}
         {tab === 'memory' && <MemoryTab pid={pid} />}
         {tab === 'profiler' && <ProfilerTab pid={pid} />}
+        {tab === 'agent' && <AgentTab pid={pid} />}
         {tab === 'details' && <Details details={details} />}
       </section>
     </>
