@@ -14,6 +14,9 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-websocket")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 
+    // Time-series persistence (round-robin database with built-in roll-ups).
+    implementation("org.rrd4j:rrd4j:3.9")
+
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
