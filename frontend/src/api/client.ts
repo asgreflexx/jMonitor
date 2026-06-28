@@ -145,6 +145,26 @@ export interface HeapDumpInfo {
   live: boolean
 }
 
+export interface FlameNode {
+  name: string
+  value: number
+  children: FlameNode[]
+}
+
+export interface JfrRecordingInfo {
+  id: number
+  pid: number
+  fileName: string
+  sizeBytes: number
+  createdMillis: number
+  profile: string
+}
+
+export interface JfrStatus {
+  recording: boolean
+  profile?: string
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const res = await fetch(path, { headers: { Accept: 'application/json' } })
   if (!res.ok) {
@@ -202,4 +222,14 @@ export const api = {
   heapDumps: (pid: number) =>
     getJson<HeapDumpInfo[]>(`/api/processes/${pid}/heap/dumps`),
   heapDumpDownloadUrl: (id: number) => `/api/heap/dumps/${id}/download`,
+
+  // ---- Phase 5: JFR profiling ----
+  jfrStatus: (pid: number) => getJson<JfrStatus>(`/api/processes/${pid}/jfr/status`),
+  jfrStart: (pid: number, profile: string) =>
+    postJson<JfrStatus>(`/api/processes/${pid}/jfr/start?profile=${profile}`),
+  jfrStop: (pid: number) => postJson<JfrRecordingInfo>(`/api/processes/${pid}/jfr/stop`),
+  jfrRecordings: (pid: number) =>
+    getJson<JfrRecordingInfo[]>(`/api/processes/${pid}/jfr/recordings`),
+  jfrFlameGraph: (id: number) => getJson<FlameNode>(`/api/jfr/recordings/${id}/flamegraph`),
+  jfrDownloadUrl: (id: number) => `/api/jfr/recordings/${id}/download`,
 }
